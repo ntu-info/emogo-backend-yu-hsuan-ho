@@ -1,29 +1,16 @@
-[![Review Assignment Due Date](https://classroom.github.com/assets/deadline-readme-button-22041afd0340ce965d47ae6ef1cefeee28c7c493a6346c4f15d667ab976d596c.svg)](https://classroom.github.com/a/e7FBMwSa)
-[![Open in Visual Studio Code](https://classroom.github.com/assets/open-in-vscode-2e0aaae1b6195c2367325f4f02e2d04e9abb55f0b24a779b69b11b9e10269abc.svg)](https://classroom.github.com/online_ide?assignment_repo_id=21908477&assignment_repo_type=AssignmentRepo)
-# Deploy FastAPI on Render
+# EmoGo 資料後端服務 (FastAPI + MongoDB)
 
-Use this repo as a template to deploy a Python [FastAPI](https://fastapi.tiangolo.com) service on Render.
+## 專案目標:
 
-See https://render.com/docs/deploy-fastapi or follow the steps below:
+這是一個公開存取的後端資料頁面，用於呈現EmoGo前端收集到的三類數據：Vlog 影片、情緒分數及 GPS 座標。
 
-## Manual Steps
+## 資料下載頁面URI:
 
-1. You may use this repository directly or [create your own repository from this template](https://github.com/render-examples/fastapi/generate) if you'd like to customize the code.
-2. Create a new Web Service on Render.
-3. Specify the URL to your new repository or this repository.
-4. Render will automatically detect that you are deploying a Python service and use `pip` to download the dependencies.
-5. Specify the following as the Start Command.
+* 檢視資料頁面: https://emogo-backend-yu-hsuan-ho.onrender.com/data-download
+* 直接下載CSV: https://emogo-backend-yu-hsuan-ho.onrender.com/download-csv
 
-    ```shell
-    uvicorn main:app --host 0.0.0.0 --port $PORT
-    ```
+## 技術架構:
 
-6. Click Create Web Service.
-
-Or simply click:
-
-[![Deploy to Render](https://render.com/images/deploy-to-render-button.svg)](https://render.com/deploy?repo=https://github.com/render-examples/fastapi)
-
-## Thanks
-
-Thanks to [Harish](https://harishgarg.com) for the [inspiration to create a FastAPI quickstart for Render](https://twitter.com/harishkgarg/status/1435084018677010434) and for some sample code!
+* API 框架: FastAPI (Python)
+* 資料庫: MongoDB Atlas (使用 motor 驅動程式)
+* 數據導出: 頁面包含「一鍵下載所有數據 (.CSV)」功能。
