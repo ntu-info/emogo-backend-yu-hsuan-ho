@@ -250,8 +250,8 @@ async def data_download_page():
     <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
         <header class="mb-8 p-6 bg-gray-600 rounded-xl shadow-lg">
             <h1 class="text-4xl font-extrabold text-white">EmoGo 資料下載網站 (Data Download Portal)</h1>
-            <p class="mt-2 text-xl text-white">公開存取最新的 EmoGo 收集資料。</p>
-            <p class="mt-2 text-sm text-white">目前顯示 {len(data_items)} 筆資料。</p>
+            <p class="mt-2 text-xl text-white">公開存取最新的 EmoGo 收集資料</p>
+            <p class="mt-2 text-sm text-white">目前顯示 {len(data_items)} 筆資料</p>
         </header>
         
         {download_button_html} <!-- 放置下載按鈕 -->
@@ -259,14 +259,14 @@ async def data_download_page():
         <div class="bg-white shadow-xl rounded-xl overflow-hidden">
             <div class="p-6 bg-gray-50 border-b border-gray-200">
                 <h2 class="text-2xl font-semibold text-gray-800">最新收集資料列表 (Recent Data)</h2>
-                <p class="text-sm text-gray-500">此列表僅顯示最新的 10 筆資料，但下載按鈕會匯出所有資料。</p>
+                <p class="text-sm text-gray-500">此列表僅顯示最新的 10 筆資料，但下載按鈕會匯出所有資料</p>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用者 ID User ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用者ID User ID</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">時間戳記Timestamp (時區: UTC+8) </th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">情緒Sentiment(1-5分)</th>
                             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GPS 座標GPS Coords(緯度, 經度)</th>
