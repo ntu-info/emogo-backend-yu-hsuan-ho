@@ -20,14 +20,13 @@ app = FastAPI(
     version="1.0.1"
 )
 
-# 定義情緒代碼到顯示文字和顏色的映射 (繁體中文/英文)
-# 請根據您的 EmoGo 專案定義，這裡假設 4 為「快樂」
+# 定義情緒分數的顯示文字和顏色
 SENTIMENT_MAPPING: Dict[int, tuple[str, str]] = {
-    1: ("焦慮/Anxiety", "text-red-600"),
-    2: ("悲傷/Sadness", "text-blue-600"),
-    3: ("平靜/Calm", "text-gray-600"),
-    4: ("快樂/Joy", "text-green-600"),
-    5: ("興奮/Excited", "text-yellow-600"),
+    1: ("Bad", "text-red-600"),
+    2: ("Poor", "text-orange-600"),
+    3: ("Average", "text-yellow-600"),
+    4: ("Good", "text-green-300"),
+    5: ("Happy", "text-green-600"),
 }
 
 client: Optional[AsyncIOMotorClient] = None
@@ -55,17 +54,17 @@ async def shutdown_db_client():
         print("MongoDB connection closed.")
 
 
-# --- 2. DATA MODELS (匹配您在 Compass 中的扁平化結構) ---
+# --- 2. DATA MODELS (matching with Compass) ---
 
 class MongoDBItem(BaseModel):
     """反映使用者 MongoDB 文件中的欄位。"""
     id: Optional[str] = Field(None, alias="_id") # MongoDB ID
+    user_id: int #使用者ID
     timestamp: str # 儲存為字串
     sentiment: int # 儲存為整數代碼 (e.g., 4)
     vlog_path: str # 影片連結/URI
     lat: float # 緯度
     lng: float # 經度
-    user_id: int
     
     class Config:
         populate_by_name = True
@@ -115,16 +114,15 @@ async def data_download_page():
 
     data_rows_html = ""
     for item in data_items:
-        # 1. 影片連結
-        # 由於您使用的是 Google Drive 連結，我將保持其原樣，但提醒它需要公開權限
+        # 1. 影片連結(Google Drive 公開權限)
         mock_video_link = (
             f"<a href='{item.vlog_path}' "
             "download='vlog_{item.id}.mp4' "
             "class='text-blue-500 hover:text-blue-700 font-medium' "
-            "target='_blank'>下載/播放 (Download/Play)</a>"
+            "target='_blank'> 檢視/下載 (See/Download)</a>"
         )
         
-        # 2. 情緒代碼轉換
+        # 2. 情緒分數顯示
         emotion_tuple = SENTIMENT_MAPPING.get(item.sentiment, ("未知/Unknown", "text-gray-400"))
         emotion_text = emotion_tuple[0]
         sentiment_color = emotion_tuple[1]
@@ -141,19 +139,19 @@ async def data_download_page():
         user_display = item.user_id or 'anonymous (匿名)'
         
         
+        #表格內容:
         data_rows_html += f"""
         <tr class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 text-sm font-medium text-gray-900">{user_display}</td>
             <td class="px-4 py-3 text-sm text-gray-500">{formatted_timestamp}</td>
             <td class="px-4 py-3 text-sm text-gray-900">
-                <span class="font-semibold {sentiment_color}">{emotion_text}</span> ({item.sentiment} / Score N/A)
+                <span class="font-semibold {sentiment_color}">{emotion_text}</span> ({item.sentiment})
             </td>
             <td class="px-4 py-3 text-sm text-gray-500">
-                Lat: {item.lat:.6f}, Lng: {item.lng:.6f} 
+                {item.lat:.6f}, {item.lng:.6f}
             </td>
             <td class="px-4 py-3 text-sm font-mono text-gray-700">
                 {mock_video_link}
-                <div class="text-xs text-gray-400 mt-1">（檔案路徑）</div>
             </td>
         </tr>
         """
@@ -168,28 +166,29 @@ async def data_download_page():
         </tr>
         """
 
+    
     content = f"""
     <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
-        <header class="mb-8 p-6 bg-blue-600 rounded-xl shadow-lg">
-            <h1 class="text-4xl font-extrabold text-white">EmoGo 資料下載門戶 (Data Download Portal)</h1>
-            <p class="mt-2 text-xl text-blue-200">公開存取最新的 EmoGo 收集資料。</p>
-            <p class="mt-2 text-sm text-blue-300">目前顯示 {len(data_items)} 筆資料。</p>
+        <header class="mb-8 p-6 bg-gray-600 rounded-xl shadow-lg">
+            <h1 class="text-4xl font-extrabold text-white">EmoGo 資料下載網站 (Data Download Portal)</h1>
+            <p class="mt-2 text-xl text-white">公開存取最新的 EmoGo 收集資料。</p>
+            <p class="mt-2 text-sm text-white">目前顯示 {len(data_items)} 筆資料。</p>
         </header>
         
         <div class="bg-white shadow-xl rounded-xl overflow-hidden">
             <div class="p-6 bg-gray-50 border-b border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-800">最新收集資料列表</h2>
+                <h2 class="text-2xl font-semibold text-gray-800">資料列表</h2>
             </div>
             
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-100">
                         <tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用者 ID (User ID)</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">時間戳記 (Timestamp)</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">情緒 (Sentiment)</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GPS 座標 (GPS Coords)</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vlog 影片 (Video)</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">使用者 ID User ID</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">時間戳記Timestamp (時區: UTC+8) </th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">情緒Sentiment(1-5分)</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GPS 座標GPS Coords(緯度, 經度)</th>
+                            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">影片Video</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
