@@ -65,11 +65,7 @@ class MongoDBItem(BaseModel):
     vlog_path: str # 影片連結/URI
     lat: float # 緯度
     lng: float # 經度
-    
-    # 由於您的範例中沒有 user_id，我們設為可選，但在渲染時會使用預設值
-    user_id: Optional[str] = None 
-    
-    # 忽略範例中看似冗餘的 'id' 欄位
+    user_id: int
     
     class Config:
         populate_by_name = True
