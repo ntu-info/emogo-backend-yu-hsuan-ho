@@ -140,10 +140,7 @@ async def data_download_page():
         # 4. 處理 User ID
         user_display = item.user_id or 'anonymous (匿名)'
         
-        # 5. GPS Placeholder
-        city_placeholder = "N/A (請在資料庫中加入城市名稱欄位)"
-
-
+        
         data_rows_html += f"""
         <tr class="border-b hover:bg-gray-50">
             <td class="px-4 py-3 text-sm font-medium text-gray-900">{user_display}</td>
@@ -152,7 +149,7 @@ async def data_download_page():
                 <span class="font-semibold {sentiment_color}">{emotion_text}</span> ({item.sentiment} / Score N/A)
             </td>
             <td class="px-4 py-3 text-sm text-gray-500">
-                Lat: {item.lat:.6f}, Lng: {item.lng:.6f} ({city_placeholder})
+                Lat: {item.lat:.6f}, Lng: {item.lng:.6f} 
             </td>
             <td class="px-4 py-3 text-sm font-mono text-gray-700">
                 {mock_video_link}
