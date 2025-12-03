@@ -1,10 +1,12 @@
 from fastapi import FastAPI, HTTPException, Response
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
 import os
 from datetime import datetime
+import io # 新增：用於處理 CSV 檔案流
+import csv # 新增：用於 CSV 格式轉換
 from bson import ObjectId
 
 # --- 1. CONFIGURATION AND INITIALIZATION ---
@@ -17,7 +19,7 @@ COLLECTION_NAME = "datacsv" # 確保與您在 Compass 中建立的 Collection �
 app = FastAPI(
     title="EmoGo Public Data Backend (Updated)",
     description="FastAPI service for serving EmoGo data (Vlogs, Sentiments, GPS) from MongoDB.",
-    version="1.0.1"
+    version="1.0.2" # 版本號更新
 )
 
 # 定義情緒分數的顯示文字和顏色
@@ -76,6 +78,71 @@ class MongoDBItem(BaseModel):
 async def root():
     """根目錄健康檢查。"""
     return {"message": "EmoGo Backend is running. Check /data-download for public data."}
+
+
+@app.get("/download-csv")
+async def download_csv():
+    """
+    從 MongoDB 獲取所有數據，轉換為 CSV 格式並提供下載。
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database connection failed.")
+
+    # CSV 的標頭 (欄位名稱)
+    headers = [
+        "Record_ID", "User_ID", "Timestamp", "Sentiment_Code", 
+        "Sentiment_Text", "Latitude", "Longitude", "Vlog_Path"
+    ]
+    
+    # 使用 io.StringIO 創建一個記憶體中的檔案緩衝區
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(headers) # 寫入標頭
+
+    try:
+        # 從資料庫中獲取所有數據 (為了下載，我們獲取所有數據，而不只是 10 筆)
+        cursor = db[COLLECTION_NAME].find().sort("timestamp", -1)
+        async for doc in cursor:
+            # 1. 處理情緒代碼轉換
+            emotion_tuple = SENTIMENT_MAPPING.get(doc.get('sentiment', 0), ("Unknown", ""))
+            sentiment_text = emotion_tuple[0]
+            
+            # 2. 格式化時間戳記 (假設格式為 "2025-11-2707:35:33")
+            timestamp_str = doc.get('timestamp', '')
+            try:
+                dt_obj = datetime.strptime(timestamp_str, '%Y-%m-%d%H:%M:%S')
+                formatted_timestamp = dt_obj.strftime('%Y/%m/%d %H:%M:%S')
+            except ValueError:
+                formatted_timestamp = timestamp_str # 格式化失敗則使用原始字串
+
+            # 3. 寫入一行資料
+            row = [
+                str(doc.get('_id')),
+                doc.get('user_id', 'N/A'),
+                formatted_timestamp,
+                doc.get('sentiment', 0),
+                sentiment_text,
+                doc.get('lat', 'N/A'),
+                doc.get('lng', 'N/A'),
+                doc.get('vlog_path', 'N/A')
+            ]
+            writer.writerow(row)
+
+    except Exception as e:
+        print(f"Error generating CSV: {e}")
+        raise HTTPException(status_code=500, detail="Error generating CSV file.")
+
+    # 返回 StreamingResponse 觸發檔案下載
+    response = StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv"
+    )
+    # 設定下載檔案名稱和編碼 (中文環境建議使用 utf-8-sig)
+    filename = f"emogo_data_export_{datetime.now().strftime('%Y%m%d')}.csv"
+    response.headers["Content-Disposition"] = f"attachment; filename={filename}"
+    
+    return response
+
 
 @app.get("/data-download", response_class=HTMLResponse)
 async def data_download_page():
@@ -136,7 +203,7 @@ async def data_download_page():
             formatted_timestamp = item.timestamp + " (格式錯誤)" # 格式化失敗時顯示原始字串
             
         # 4. 處理 User ID
-        user_display = item.user_id or 'anonymous (匿名)'
+        user_display = item.user_id # 您的資料結構中 user_id 為 int
         
         
         #表格內容:
@@ -160,12 +227,24 @@ async def data_download_page():
         data_rows_html = """
         <tr>
             <td colspan="5" class="px-4 py-12 text-center text-gray-500 text-lg">
-                <p>在 'emogo_data' Collection 中未找到資料。</p>
+                <p>在 'datacsv' Collection 中未找到資料。</p>
                 <p class="mt-2 text-sm">請使用 MongoDB Compass 確認資料已成功插入。</p>
             </td>
         </tr>
         """
-
+        # 如果沒有數據，隱藏下載按鈕
+        download_button_html = ""
+    else:
+        # 下載按鈕 HTML，指向新的 /download-csv 路由
+        download_button_html = f"""
+        <div class="flex justify-end mb-4">
+            <a href="/download-csv" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-500 hover:bg-green-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 transition duration-150 ease-in-out">
+                <!-- Lucide Download Cloud Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mr-2"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><path d="m7 10 5 5 5-5"/><path d="M12 15V4"/></svg>
+                一鍵下載所有數據 (.CSV)
+            </a>
+        </div>
+        """
     
     content = f"""
     <div class="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -175,9 +254,12 @@ async def data_download_page():
             <p class="mt-2 text-sm text-white">目前顯示 {len(data_items)} 筆資料。</p>
         </header>
         
+        {download_button_html} <!-- 放置下載按鈕 -->
+
         <div class="bg-white shadow-xl rounded-xl overflow-hidden">
             <div class="p-6 bg-gray-50 border-b border-gray-200">
-                <h2 class="text-2xl font-semibold text-gray-800">資料列表</h2>
+                <h2 class="text-2xl font-semibold text-gray-800">最新收集資料列表 (Recent Data)</h2>
+                <p class="text-sm text-gray-500">此列表僅顯示最新的 10 筆資料，但下載按鈕會匯出所有資料。</p>
             </div>
             
             <div class="overflow-x-auto">
